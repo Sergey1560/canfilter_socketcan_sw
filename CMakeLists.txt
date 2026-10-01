@@ -50,6 +50,17 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined library search paths
 )
 
+# TinyUSB (device stack + STM32 FSDEV driver)
+set(TINYUSB_SOURCES
+Lib/tinyusb/src/tusb.c
+Lib/tinyusb/src/common/tusb_fifo.c
+Lib/tinyusb/src/device/usbd.c
+Lib/tinyusb/src/portable/st/stm32_fsdev/dcd_stm32_fsdev.c
+Lib/tinyusb/src/portable/st/stm32_fsdev/fsdev_common.c
+)
+# Без встроенных классов TinyUSB пустой массив драйверов - ошибка под -Wpedantic
+set_source_files_properties(${TINYUSB_SOURCES} PROPERTIES COMPILE_OPTIONS "-Wno-pedantic;-Wno-type-limits")
+
 # Add sources to executable
 target_sources(${CMAKE_PROJECT_NAME} PUBLIC
 Startup/startup_stm32g474xx.s
@@ -58,10 +69,14 @@ Lib/Mylib/can.c
 Lib/Mylib/dwt.c
 Lib/Mylib/newlib_stub.c
 Lib/Mylib/rcc.c
+Lib/Mylib/systime.c
 Lib/Mylib/ws2812b.c
 Src/led.c
 Src/common_data.c
+Src/gs_usb.c
+Src/usb.c
 Src/main.c
+${TINYUSB_SOURCES}
 # Add user sources here
 )
 
@@ -69,6 +84,7 @@ Src/main.c
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC
 Lib/CMSIS
 Lib/Mylib
+Lib/tinyusb/src
 Src
 # Add user defined include paths
 )
