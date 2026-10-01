@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 
+set(CMAKE_PROJECT_NAME canfilet_socketcan)
+
 # Setup compiler settings
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -21,26 +23,20 @@ endif()
 set(GCC_TC_PATH   "/home/sergey/soft/arm-none-eabi")
 set(SREC_OBJCOPY  ${GCC_TC_PATH}/bin/arm-none-eabi-objcopy)
 
-# Set the project name
-set(CMAKE_PROJECT_NAME canfilter)
-
 # Include toolchain file
 include("cmake/gcc-arm-none-eabi.cmake")
-#include("cmake/clang.cmake")
 
 include("cmake/pvs-studio-cmake-module/PVS-Studio.cmake")
 
+project(${CMAKE_PROJECT_NAME} C ASM)
+
 # Enable compile command to ease indexing with e.g. clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
-
-# Enable CMake support for ASM and C languages
-enable_language(C ASM)
 
 set(CMAKE_C_FLAGS_DEBUG "" CACHE STRING "" FORCE)
 set(CMAKE_C_FLAGS_RELEASE "" CACHE STRING "" FORCE)
 
 # Core project settings
-project(${CMAKE_PROJECT_NAME})
 message("Build type: " ${CMAKE_BUILD_TYPE})
 
 # Create an executable object type
