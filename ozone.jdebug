@@ -32,7 +32,7 @@ void OnProjectLoad (void) {
   //
   // User settings
   //
-  File.Open ("$(ProjectDir)/build/aem2abit.elf");
+  File.Open ("$(ProjectDir)/build/canfilet_socketcan.elf");
   //Project.SetOSPlugin ("FreeRTOSPlugin_CM4");
 }
 
