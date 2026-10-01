@@ -26,6 +26,7 @@ int main(void){
   while (1){
     tud_task();
     gs_usb_poll();
+    can_poll();
     bootloader_poll();
   }
 }

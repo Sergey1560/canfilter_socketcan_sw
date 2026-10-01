@@ -30,6 +30,9 @@ https://phryniszak.github.io/stm32g-fdcan/
 #define CAN_DEFAULT_TSEG2	16
 #define CAN_DEFAULT_SJW		16
 
+/* Пауза в bus-off перед восстановлением (аналог restart-ms в Linux) */
+#define CAN_BUSOFF_RESTART_MS	100
+
 /* Ограничения NBTP / DBTP */
 #define CAN_NBT_TSEG1_MIN	2
 #define CAN_NBT_TSEG1_MAX	256
@@ -192,6 +195,9 @@ bool can_set_timing(uint8_t ch, const struct can_timing_t *timing);
 bool can_set_data_timing(uint8_t ch, const struct can_timing_t *timing);
 bool can_start(uint8_t ch, uint32_t mode);
 void can_stop(uint8_t ch);
+
+/* Основной цикл: восстановление после bus-off по истечении CAN_BUSOFF_RESTART_MS */
+void can_poll(void);
 
 /* 0 - кадр поставлен в TX FIFO, -1 - FIFO занят или канал остановлен.
 marker возвращается в can_tx_done_cb() */

@@ -1,4 +1,5 @@
 #include "can.h"
+#include "systime.h"
 
 #define CAN_TX_BUFFERS		3
 #define CAN_INIT_TIMEOUT	100000
@@ -15,6 +16,8 @@ struct can_ch_ctx_t{
 	struct can_timing_t data_timing;
 	volatile enum can_state_t state;
 	volatile uint8_t tx_inflight;			//Маска TX буферов, ожидающих завершения
+	volatile bool busoff_pending;			//Ждёт восстановления из can_poll()
+	volatile uint32_t busoff_time;
 	uint8_t tx_marker[CAN_TX_BUFFERS];
 };
 
@@ -37,6 +40,7 @@ static void can_irq(uint8_t ch);
 static void can_read_rx(uint8_t ch);
 static void can_read_tx_event(uint8_t ch);
 static void can_check_tx_cancel(uint8_t ch);
+static enum can_state_t can_state_from_psr(uint32_t psr);
 static void can_update_state(uint8_t ch, uint32_t psr);
 static void can_bus_error(uint8_t ch, uint32_t ir, uint32_t psr);
 
@@ -177,7 +181,7 @@ bool can_set_timing(uint8_t ch, const struct can_timing_t *timing){
 	if(timing->brp < CAN_NBT_BRP_MIN || timing->brp > CAN_NBT_BRP_MAX ||
 	   timing->tseg1 < CAN_NBT_TSEG1_MIN || timing->tseg1 > CAN_NBT_TSEG1_MAX ||
 	   timing->tseg2 < CAN_NBT_TSEG2_MIN || timing->tseg2 > CAN_NBT_TSEG2_MAX ||
-	   timing->sjw < 1 || timing->sjw > CAN_NBT_SJW_MAX){
+	   timing->sjw < 1 || timing->sjw > CAN_NBT_SJW_MAX || timing->sjw > timing->tseg2){
 		ERROR("CAN%d bad timing brp %d tseg1 %d tseg2 %d sjw %d", ch + 1, timing->brp, timing->tseg1, timing->tseg2, timing->sjw);
 		return false;
 	}
@@ -192,7 +196,7 @@ bool can_set_data_timing(uint8_t ch, const struct can_timing_t *timing){
 	if(timing->brp < CAN_DBT_BRP_MIN || timing->brp > CAN_DBT_BRP_MAX ||
 	   timing->tseg1 < CAN_DBT_TSEG1_MIN || timing->tseg1 > CAN_DBT_TSEG1_MAX ||
 	   timing->tseg2 < CAN_DBT_TSEG2_MIN || timing->tseg2 > CAN_DBT_TSEG2_MAX ||
-	   timing->sjw < 1 || timing->sjw > CAN_DBT_SJW_MAX){
+	   timing->sjw < 1 || timing->sjw > CAN_DBT_SJW_MAX || timing->sjw > timing->tseg2){
 		ERROR("CAN%d bad data timing brp %d tseg1 %d tseg2 %d sjw %d", ch + 1, timing->brp, timing->tseg1, timing->tseg2, timing->sjw);
 		return false;
 	}
@@ -277,8 +281,15 @@ bool can_start(uint8_t ch, uint32_t mode){
 
 	can_silent(ch, (mode & (CAN_MODE_LISTEN_ONLY|CAN_MODE_LOOPBACK)) != 0);
 
+	NVIC_DisableIRQ(can_hw[ch].irq);
+
 	CAN->CCCR &= ~FDCAN_CCCR_INIT;
 	for(uint32_t i = 0; i < CAN_INIT_TIMEOUT && (CAN->CCCR & FDCAN_CCCR_INIT); i++){};
+
+	/* INIT не сбрасывает счётчики ошибок: после старта из bus-off идёт восстановление */
+	can_update_state(ch, CAN->PSR);
+
+	NVIC_EnableIRQ(can_hw[ch].irq);
 
 	#ifdef CAN_DEBUG
 	DEBUG("CAN%d start mode 0x%X NBTP 0x%08X DBTP 0x%08X", ch + 1, mode, CAN->NBTP, CAN->DBTP);
@@ -304,6 +315,7 @@ void can_stop(uint8_t ch){
 	NVIC_ClearPendingIRQ(can_hw[ch].irq);
 
 	can_ch[ch].tx_inflight = 0;
+	can_ch[ch].busoff_pending = false;
 	can_ch[ch].state = CAN_STATE_STOPPED;
 	can_silent(ch, true);
 
@@ -511,26 +523,30 @@ static void can_check_tx_cancel(uint8_t ch){
 	}
 }
 
+static enum can_state_t can_state_from_psr(uint32_t psr){
+	if(psr & FDCAN_PSR_BO){
+		return CAN_STATE_BUS_OFF;
+	}
+	if(psr & FDCAN_PSR_EP){
+		return CAN_STATE_PASSIVE;
+	}
+	if(psr & FDCAN_PSR_EW){
+		return CAN_STATE_WARNING;
+	}
+	return CAN_STATE_ACTIVE;
+}
+
 static void can_update_state(uint8_t ch, uint32_t psr){
 	FDCAN_GlobalTypeDef *CAN = can_hw[ch].can;
-	enum can_state_t state;
+	enum can_state_t state = can_state_from_psr(psr);
 
-	if(psr & FDCAN_PSR_BO){
-		state = CAN_STATE_BUS_OFF;
-	}else if(psr & FDCAN_PSR_EP){
-		state = CAN_STATE_PASSIVE;
-	}else if(psr & FDCAN_PSR_EW){
-		state = CAN_STATE_WARNING;
-	}else{
-		state = CAN_STATE_ACTIVE;
-	}
-
-	if(state == CAN_STATE_BUS_OFF && (CAN->CCCR & FDCAN_CCCR_INIT)){
-		/* Автоматическое восстановление: после 129x11 рецессивных бит BO сбросится */
+	if(state == CAN_STATE_BUS_OFF && (CAN->CCCR & FDCAN_CCCR_INIT) && !can_ch[ch].busoff_pending){
+		/* Контроллер остановлен аппаратно, восстановление через CAN_BUSOFF_RESTART_MS в can_poll() */
 		#ifdef CAN_DEBUG
-		ERROR("CAN%d bus-off, recovery", ch + 1);
+		ERROR("CAN%d bus-off", ch + 1);
 		#endif
-		CAN->CCCR &= ~FDCAN_CCCR_INIT;
+		can_ch[ch].busoff_time = systime_ms();
+		can_ch[ch].busoff_pending = true;
 	}
 
 	enum can_state_t prev = can_ch[ch].state;
@@ -538,6 +554,26 @@ static void can_update_state(uint8_t ch, uint32_t psr){
 		uint32_t ecr = CAN->ECR;
 		can_ch[ch].state = state;
 		can_state_cb(ch, state, prev, (ecr & FDCAN_ECR_TEC) >> FDCAN_ECR_TEC_Pos, (ecr & FDCAN_ECR_REC) >> FDCAN_ECR_REC_Pos);
+	}
+}
+
+void can_poll(void){
+	for(uint8_t ch = 0; ch < CAN_CH_COUNT; ch++){
+		if(!can_ch[ch].busoff_pending || (systime_ms() - can_ch[ch].busoff_time) < CAN_BUSOFF_RESTART_MS){
+			continue;
+		}
+
+		NVIC_DisableIRQ(can_hw[ch].irq);
+		/* can_stop() мог успеть сбросить флаг */
+		if(can_ch[ch].busoff_pending){
+			can_ch[ch].busoff_pending = false;
+			#ifdef CAN_DEBUG
+			DEBUG("CAN%d bus-off recovery", ch + 1);
+			#endif
+			/* После 129x11 рецессивных бит BO сбросится, придёт прерывание BO */
+			can_hw[ch].can->CCCR &= ~FDCAN_CCCR_INIT;
+		}
+		NVIC_EnableIRQ(can_hw[ch].irq);
 	}
 }
 

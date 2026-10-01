@@ -462,11 +462,13 @@ static bool gs_set_mode(uint8_t ch, const struct gs_device_mode *mode){
 	c->flags = mode->flags;
 	c->started = true;
 
+	/* До can_start(): реальное состояние контроллера придёт через can_state_cb() */
+	led_channel_state(ch, LED_CH_OK);
+
 	if(!can_start(ch, can_mode)){
 		gs_channel_reset(ch);
 		return false;
 	}
-	led_channel_state(ch, LED_CH_OK);
 	return true;
 }
 
