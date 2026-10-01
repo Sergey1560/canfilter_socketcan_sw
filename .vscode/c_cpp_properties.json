@@ -1,0 +1,20 @@
+{
+    "configurations": [
+        {
+            "name": "STM32G431",
+            "compilerPath": "/usr/bin/arm-none-eabi-gcc",
+            "includePath": [
+                "${workspaceFolder}/Lib/**",
+                "${workspaceFolder}/Src"
+            ],
+            "defines": [
+                "STM32G474xx",
+                "SEGGER_SYSVIEW"
+            ],
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "gcc-arm"
+        }
+    ],
+    "version": 4
+}

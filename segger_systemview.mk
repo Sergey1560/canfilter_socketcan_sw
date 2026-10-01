@@ -1,0 +1,10 @@
+C_SOURCES += \
+Lib/Segger/SEGGER_SYSVIEW_Config_FreeRTOS.c \
+Lib/Segger/SEGGER_SYSVIEW_FreeRTOS.c \
+Lib/Segger/SEGGER_SYSVIEW.c
+
+C_INCLUDES += \
+-ILib/Segger
+
+C_DEFS +=  \
+-DSEGGER_SYSVIEW

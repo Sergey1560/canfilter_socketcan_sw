@@ -1,0 +1,64 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build LLVM",
+            "type": "shell",
+            "group": "build",
+            "command": "cmake --build ./build",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+            "label": "Configure CMAKE",
+            "type": "shell",
+            "group": "build",
+            "command": "rm -rf ./build && mkdir ./build && cd ./build && cmake .. -DCMAKE_BUILD_TYPE=Release",
+            "problemMatcher": [
+                "$gcc"
+            ]
+        },
+        {
+                "label": "Clean",
+                "type": "shell",
+                "group": "build",
+                "command": "make clean",
+                "problemMatcher": [
+                    "$gcc"
+                ]
+            },
+        {
+            "label": "Ozone",
+            "type": "shell",
+            "group": "build",
+            "command": "ozone ./ozone.jdebug",
+            "problemMatcher": [
+                "$gcc"
+            ]
+    },
+    {
+        "label": "Flash J-link",
+        "type": "shell",
+        "group": "build",
+        "command": "JLinkExe -device \"STM32G431CB\" -if SWD -speed 4000 -autoconnect 1 -CommanderScript ./jlink.cmd",
+        "problemMatcher": [
+            "$gcc"
+        ]
+},
+{
+    "label": "Flash by CAN-BUS",
+    "type": "shell",
+    "group": "build",
+    "command": "/home/sergey/soft/OpenBLT/BootCommander -s=xcp -t=xcp_can -d=can0 -cm=161 ~/Projects/STM32/G4/ABS/build/abs_sw.srec",
+    "problemMatcher": [
+        "$gcc"
+    ]
+}
+
+
+
+    ]
+}

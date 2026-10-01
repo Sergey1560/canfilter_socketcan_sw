@@ -1,0 +1,14 @@
+{
+    "files.associations": {
+        "main.h": "c",
+        "common_defs.h": "c",
+        "stm32g4xx.h": "c",
+        "log.h": "c",
+        "segger_rtt.h": "c",
+        "stm32g4xx_hal.h": "c",
+        "led.h": "c",
+        "rcc.h": "c",
+        "tim.h": "c",
+        "comp.h": "c"
+    },
+}
