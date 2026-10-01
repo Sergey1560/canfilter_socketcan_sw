@@ -129,8 +129,20 @@ add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
 
 # Обновление прошивки по USB: cmake --build build --target dfu
 # 1d50:606f - прошивка (DFU Runtime), 0483:df11 - системный загрузчик STM32
+find_program(DFU_SUFFIX dfu-suffix)
+if(DFU_SUFFIX)
+    # .bin с DFU суффиксом (VID/PID 0xFFFF - любое устройство)
+    add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_PROJECT_NAME}.bin ${CMAKE_PROJECT_NAME}.dfu
+        COMMAND ${DFU_SUFFIX} -a ${CMAKE_PROJECT_NAME}.dfu > /dev/null
+    )
+    set(DFU_IMAGE ${CMAKE_PROJECT_NAME}.dfu)
+else()
+    set(DFU_IMAGE ${CMAKE_PROJECT_NAME}.bin)
+endif()
+
 add_custom_target(dfu
-    COMMAND dfu-util -d 1d50:606f,0483:df11 -a 0 -s 0x08000000:leave -D ${CMAKE_PROJECT_NAME}.bin
+    COMMAND dfu-util -d 1d50:606f,0483:df11 -a 0 -s 0x08000000:leave -D ${DFU_IMAGE}
     DEPENDS ${CMAKE_PROJECT_NAME}
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     USES_TERMINAL
@@ -139,7 +151,7 @@ add_custom_target(dfu
 set_property(
         TARGET ${CMAKE_PROJECT_NAME}
         APPEND
-        PROPERTY ADDITIONAL_CLEAN_FILES ${CMAKE_PROJECT_NAME}.map ${CMAKE_PROJECT_NAME}.bin firmware.elf
+        PROPERTY ADDITIONAL_CLEAN_FILES ${CMAKE_PROJECT_NAME}.map ${CMAKE_PROJECT_NAME}.bin ${CMAKE_PROJECT_NAME}.dfu firmware.elf
 )
 
 # cmake .. -DPVS_ENABLED=1
