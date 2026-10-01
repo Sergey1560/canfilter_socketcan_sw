@@ -4,3 +4,4 @@
 .vscode/ipch/
 ozone.jdebug.user
 Src/version.c
+.cache/
