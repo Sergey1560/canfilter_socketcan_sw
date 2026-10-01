@@ -7,9 +7,21 @@ void RCC_init(void){
 
 	dwt_init();
 
+	RCC->APB1ENR1 |= RCC_APB1ENR1_PWREN;
+	(void)RCC->APB1ENR1;
+
+	//Отключение dead battery pull-down UCPD1 на CC1/CC2 (PB6 - LED, PB4 - CAN3_S)
+	PWR->CR3 |= PWR_CR3_UCPD_DBDIS;
+
+	//Перед переходом в boost AHB делится на 2 (RM0440 6.1.5)
+	tmp = RCC->CFGR;
+	tmp &= ~RCC_CFGR_HPRE;
+	tmp |= RCC_CFGR_HPRE_DIV2;
+	RCC->CFGR = tmp;
+
 	//Scale 1, boost mode
-    PWR->CR5 &= ~PWR_CR5_R1MODE;
-    tmp = PWR->CR1;
+	PWR->CR5 &= ~PWR_CR5_R1MODE;
+	tmp = PWR->CR1;
 	tmp &= ~PWR_CR1_VOS;
 	tmp |= PWR_CR1_VOS_0;
 	PWR->CR1 = tmp;
@@ -22,8 +34,8 @@ void RCC_init(void){
 	FLASH->ACR = tmp;
 
 	while ((FLASH->ACR & FLASH_ACR_LATENCY) != FLASH_ACR_LATENCY_4WS){};
-	
-	RCC->CR |= RCC_CR_HSEON; 
+
+	RCC->CR |= RCC_CR_HSEON;
 	while(!(RCC->CR & RCC_CR_HSERDY)){};
 
 	RCC->CR &= ~(RCC_CR_PLLON);
@@ -46,8 +58,13 @@ void RCC_init(void){
 	tmp &= ~(RCC_CFGR_SW);
 	tmp |= RCC_CFGR_SW;
 	RCC->CFGR = tmp;
-	
+
 	while((RCC->CFGR & RCC_CFGR_SWS) != (RCC_CFGR_SWS)) {};
+
+	//Не менее 1 мкс на AHB/2, затем AHB без делителя
+	tmp = DWT->CYCCNT;
+	while((DWT->CYCCNT - tmp) < (SYSCLK_FREQ / 1000000UL)){};
+	RCC->CFGR &= ~RCC_CFGR_HPRE;
 
 	SystemCoreClockUpdate();
 
