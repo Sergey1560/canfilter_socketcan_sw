@@ -11,6 +11,7 @@
 #define USB_MANUFACTURER_STR	"CanFilter"
 #define USB_PRODUCT_STR			"CanFilter G4 gs_usb"
 #define USB_INTERFACE_STR		"gs_usb"
+#define USB_DFU_STR				"CanFilter DFU"
 
 /* 3 трансивера TJA1051 (до 70 мА в доминантном состоянии) + МК + светодиоды */
 #define USB_MAX_POWER_MA		250

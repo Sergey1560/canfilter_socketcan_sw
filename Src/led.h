@@ -12,6 +12,7 @@
 #define LED_COLOR_GREEN     (uint32_t)(LED_COLOR_BR << 8)
 #define LED_COLOR_RED       (uint32_t)(LED_COLOR_BR << 16)
 #define LED_COLOR_YELLOW    (uint32_t)(LED_COLOR_RED|LED_COLOR_GREEN)
+#define LED_COLOR_PURPLE    (uint32_t)(LED_COLOR_RED|LED_COLOR_BLUE)
 
 /*
 Индикация канала:
@@ -21,6 +22,7 @@
   ERROR   - красный, bus-off
 Приём/передача кадра коротко гасит светодиод.
 Нет USB хоста - все светодиоды медленно мигают синим.
+Системный загрузчик (DFU) - все светодиоды фиолетовые.
 */
 enum led_ch_state_t{
     LED_CH_OFF = 0,
@@ -38,5 +40,9 @@ void led_usb_connected(bool connected);
 
 /* Мигание светодиодом канала жёлтым (ethtool -p canX) */
 void led_identify(uint8_t ch, bool on);
+
+/* Останавливает обновление и зажигает все светодиоды фиолетовым.
+WS2812 держит цвет, пока работает системный загрузчик */
+void led_bootloader(void);
 
 #endif

@@ -55,6 +55,7 @@ set(TINYUSB_SOURCES
 Lib/tinyusb/src/tusb.c
 Lib/tinyusb/src/common/tusb_fifo.c
 Lib/tinyusb/src/device/usbd.c
+Lib/tinyusb/src/class/dfu/dfu_rt_device.c
 Lib/tinyusb/src/portable/st/stm32_fsdev/dcd_stm32_fsdev.c
 Lib/tinyusb/src/portable/st/stm32_fsdev/fsdev_common.c
 )
@@ -65,6 +66,7 @@ set_source_files_properties(${TINYUSB_SOURCES} PROPERTIES COMPILE_OPTIONS "-Wno-
 target_sources(${CMAKE_PROJECT_NAME} PUBLIC
 Startup/startup_stm32g474xx.s
 Lib/CMSIS/system_stm32g4xx.c
+Lib/Mylib/bootloader.c
 Lib/Mylib/can.c
 Lib/Mylib/dwt.c
 Lib/Mylib/newlib_stub.c
@@ -123,6 +125,15 @@ add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
 
 add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
     COMMAND ln -fs  ${CMAKE_PROJECT_NAME}.elf firmware.elf
+)
+
+# Обновление прошивки по USB: cmake --build build --target dfu
+# 1d50:606f - прошивка (DFU Runtime), 0483:df11 - системный загрузчик STM32
+add_custom_target(dfu
+    COMMAND dfu-util -d 1d50:606f,0483:df11 -a 0 -s 0x08000000:leave -D ${CMAKE_PROJECT_NAME}.bin
+    DEPENDS ${CMAKE_PROJECT_NAME}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    USES_TERMINAL
 )
 
 set_property(

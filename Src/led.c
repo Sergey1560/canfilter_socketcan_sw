@@ -139,3 +139,13 @@ void led_identify(uint8_t ch, bool on){
         led_ch[ch].identify = on;
     }
 }
+
+void led_bootloader(void){
+    NVIC_DisableIRQ(TIM6_DAC_IRQn);
+    TIM6->CR1 &= ~TIM_CR1_CEN;
+
+    for(uint8_t ch = 0; ch < LED_COUNT; ch++){
+        ws2812b_set_rgb(led_map[ch], LED_COLOR_PURPLE);
+    }
+    ws2812b_send();
+}

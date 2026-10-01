@@ -19,4 +19,7 @@
 #define CFG_TUD_MIDI				0
 #define CFG_TUD_VENDOR				0
 
+/* DFU Runtime: dfu-util переводит устройство в системный загрузчик ST */
+#define CFG_TUD_DFU_RUNTIME			1
+
 #endif

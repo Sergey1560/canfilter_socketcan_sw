@@ -1,0 +1,8 @@
+# CanFilter G4: доступ к USB без root (dfu-util)
+# sudo cp udev/99-canfilter.rules /etc/udev/rules.d/ && sudo udevadm control --reload
+
+# Прошивка (gs_usb + DFU Runtime)
+SUBSYSTEM=="usb", ATTR{idVendor}=="1d50", ATTR{idProduct}=="606f", MODE="0664", TAG+="uaccess"
+
+# Системный загрузчик STM32 в режиме USB DFU
+SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="df11", MODE="0664", TAG+="uaccess"
